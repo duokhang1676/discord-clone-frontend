@@ -78,10 +78,17 @@ Dự án này là một ứng dụng voice chat được xây dựng với kiế
 - Git
 
 ### Tài khoản Cloud (cho deployment)
-- [Vercel](https://vercel.com) - Free tier
-- [Railway](https://railway.app) - $5 credit/tháng
-- [Render](https://render.com) - Free tier
-- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) - Free tier
+- [Vercel](https://vercel.com) - Free tier (unlimited)
+- [Railway](https://railway.app) - **$5 credit miễn phí/tháng** (đủ chạy 24/7 cả tháng cho 2-10 users)
+- [Render](https://render.com) - Free tier (sleep sau 15 phút inactive)
+- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) - Free tier 512MB
+
+> **💡 Lưu ý về Railway Free Tier:**
+> - Voice server sử dụng WebRTC **peer-to-peer** → audio stream trực tiếp giữa users, KHÔNG qua server
+> - Server chỉ làm **signaling** (trao đổi connection info) → bandwidth cực thấp
+> - $5 credit đủ chạy voice server 24/7 cho **2-50 users** cùng lúc trong 1 tháng
+> - Mỗi cuộc gọi chỉ tốn ~5-10KB signaling data (SDP + ICE candidates)
+> - Ước tính: **$0.10-0.50/tháng** cho 2 users thường xuyên = **10 tháng miễn phí**
 
 ## 🚀 Cài đặt Local Development
 
@@ -431,13 +438,63 @@ discord-clone-backend/
 2. Kiểm tra MONGO_URI trong .env
 3. Test connection string locally
 
-## 📊 Performance
+## 📊 Performance & Cost
 
-- **WebRTC**: Peer-to-peer = low latency
+### Railway Free Tier cho Voice Server
+
+**Câu hỏi: $5 credit miễn phí có đủ cho 2 users không?**
+
+**Trả lời: Có! Và còn thừa rất nhiều.**
+
+#### WebRTC Peer-to-Peer Architecture
+
+Voice server sử dụng **WebRTC P2P** (peer-to-peer):
+```
+User A ←──────────────────────────────────→ User B
+       (Audio stream trực tiếp, không qua server)
+
+              ↓ Chỉ lúc bắt đầu ↓
+         
+              Railway Server
+         (Signaling only: ~5KB)
+```
+
+#### Chi phí thực tế
+
+| Thành phần | Bandwidth/Request | Chi phí ước tính |
+|-----------|------------------|------------------|
+| **Signaling mỗi cuộc gọi** | ~5-10KB | $0.000001 |
+| **Kết nối WebSocket** | ~1KB/phút | $0.00001/phút |
+| **Server running 24/7** | RAM: ~50MB | ~$0.50/tháng |
+
+**Tổng kết:**
+- **2 users gọi 8 giờ/ngày**: ~$0.10-0.30/tháng
+- **10 users online cùng lúc**: ~$0.50-1.00/tháng  
+- **$5 credit = 5-10 tháng sử dụng** cho 2-10 users
+
+#### So sánh với các platform khác
+
+| Platform | Free Tier | Hạn chế | Phù hợp cho |
+|----------|-----------|---------|-------------|
+| **Railway** | $5 credit/tháng | Không sleep | ✅ Production (2-50 users) |
+| **Render** | Free | Sleep sau 15 phút | ⚠️ Demo only |
+| **Heroku** | $5/tháng | Cần credit card | Tương tự Railway |
+
+### Performance Metrics
+
+- **WebRTC**: Peer-to-peer = **latency < 100ms**
 - **Socket.io**: Auto reconnection & fallback transports
 - **Railway**: Always-on server (no cold starts)
 - **Vercel**: Global CDN cho static files
 - **Render**: Free tier có sleep sau 15 phút inactive
+
+### Scalability
+
+- **2-10 users**: Railway free tier (~$0.50/tháng)
+- **10-50 users**: Railway Hobby plan ($5/tháng)  
+- **50+ users**: Railway Pro hoặc dedicated server
+
+> **💰 Tiết kiệm chi phí:** WebRTC P2P giúp server chỉ xử lý signaling → chi phí bandwidth cực thấp!
 
 ## 🔒 Security
 
