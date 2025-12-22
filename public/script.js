@@ -1,6 +1,7 @@
-// Socket.io connection - automatically use current host
+// Socket.io connection - connect to Railway server
 const storedUsername = localStorage.getItem('username');
-const socket = io(window.location.origin, {
+const SOCKET_SERVER = 'https://discord-clone-frontend-production.up.railway.app';
+const socket = io(SOCKET_SERVER, {
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionAttempts: 10,
@@ -13,12 +14,12 @@ const socket = io(window.location.origin, {
 // Socket connection events
 socket.on('connect', () => {
   console.log('✅ Socket connected:', socket.id);
-  console.log('Connected to:', window.location.origin);
+  console.log('Connected to:', SOCKET_SERVER);
 });
 
 socket.on('connect_error', (error) => {
   console.error('❌ Socket connection error:', error);
-  console.error('Trying to connect to:', window.location.origin);
+  console.error('Trying to connect to:', SOCKET_SERVER);
   yourName.textContent = 'Connection Error - Check Console (F12)';
 });
 
