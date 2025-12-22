@@ -2,22 +2,11 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "public": "public",
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/public/index.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/public/login.html"
-    },
-    {
-      "source": "/register",
-      "destination": "/public/register.html"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/public/$1"
+      "destination": "/$1"
     }
   ],
   "headers": [
