@@ -10,10 +10,8 @@ RUN npm ci --only=production
 
 # Copy application files
 COPY server.js ./
-COPY generate-cert.js ./
-COPY cert ./cert
 
-# Expose port
+# Expose port (Railway sets PORT env var)
 EXPOSE 3000
 
 # Start server
