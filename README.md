@@ -90,7 +90,178 @@ Dự án này là một ứng dụng voice chat được xây dựng với kiế
 > - Mỗi cuộc gọi chỉ tốn ~5-10KB signaling data (SDP + ICE candidates)
 > - Ước tính: **$0.10-0.50/tháng** cho 2 users thường xuyên = **10 tháng miễn phí**
 
-## 🚀 Cài đặt Local Development
+## � Workflow Cập Nhật
+
+### Khi nào cần update từng service?
+
+#### ❌ KHÔNG cần update Voice Server khi:
+
+**Frontend Changes:**
+- ✅ Thay đổi UI/CSS
+- ✅ Thêm/sửa trang HTML
+- ✅ Cập nhật login/register form
+- ✅ Thay đổi giao diện voice chat
+- ✅ Fix bugs client-side
+
+**Backend Changes:**
+- ✅ Thêm/sửa auth routes
+- ✅ Thay đổi database schema
+- ✅ Cập nhật CORS settings
+- ✅ Thay đổi password hashing
+
+> **Voice Server chỉ xử lý WebRTC signaling, KHÔNG liên quan đến UI hay authentication!**
+
+#### ✅ CẦN update Voice Server khi:
+
+- Thay đổi Socket.io logic (signaling)
+- Thêm/sửa WebRTC configuration
+- Cập nhật STUN/TURN servers
+- Thay đổi user management trong Socket.io
+- Fix bugs trong server.js
+
+### Deployment Workflow
+
+#### Cập nhật Frontend (90% trường hợp)
+
+```bash
+# Trong discord-clone-frontend/
+git add .
+git commit -m "Update UI/features"
+git push origin main
+
+# ✅ Vercel tự động redeploy trong 1 phút
+# ❌ Railway KHÔNG cần redeploy
+# ❌ Render KHÔNG cần redeploy
+```
+
+**Kết quả:**
+- Vercel: Deploy mới
+- Railway: Không thay đổi
+- Render: Không thay đổi
+
+#### Cập nhật Backend (5% trường hợp)
+
+```bash
+# Trong discord-clone-backend/
+git add .
+git commit -m "Update auth API"
+git push origin main
+
+# ❌ Vercel KHÔNG cần redeploy
+# ❌ Railway KHÔNG cần redeploy  
+# ✅ Render tự động redeploy trong 2-3 phút
+```
+
+**Kết quả:**
+- Vercel: Không thay đổi
+- Railway: Không thay đổi
+- Render: Deploy mới
+
+#### Cập nhật Voice Server (5% trường hợp)
+
+```bash
+# Trong discord-clone-frontend/ (server.js)
+git add server.js
+git commit -m "Update Socket.io logic"
+git push origin main
+
+# ❌ Vercel có thể redeploy nhưng KHÔNG ảnh hưởng (chỉ static files)
+# ✅ Railway tự động redeploy trong 2-3 phút
+# ❌ Render KHÔNG cần redeploy
+```
+
+**Kết quả:**
+- Vercel: Có thể deploy nhưng không quan trọng
+- Railway: Deploy mới
+- Render: Không thay đổi
+
+### Kiến trúc Microservices - Độc lập hoàn toàn
+
+```
+Frontend (Vercel)     Voice Server (Railway)     Auth Backend (Render)
+      │                        │                          │
+      ├─ HTML/CSS/JS           ├─ Socket.io              ├─ Flask routes
+      ├─ UI Components         ├─ WebRTC signaling       ├─ Database logic
+      └─ Client logic          └─ User connections       └─ Password hashing
+      
+      ↓ Update độc lập         ↓ Update độc lập          ↓ Update độc lập
+```
+
+### Best Practices
+
+#### 1. Phát triển tính năng mới
+
+**Frontend-only changes (90%)**
+```bash
+# Chỉ cần push frontend
+cd discord-clone-frontend
+git push origin main
+# Vercel auto-deploy ✅
+```
+
+**Backend-only changes (5%)**
+```bash
+# Chỉ cần push backend
+cd discord-clone-backend
+git push origin main
+# Render auto-deploy ✅
+```
+
+**Full-stack changes (5%)**
+```bash
+# Push cả 2 repos nếu thay đổi cả frontend + backend
+cd discord-clone-frontend && git push origin main
+cd ../discord-clone-backend && git push origin main
+# Cả 2 auto-deploy ✅
+```
+
+#### 2. Testing sau update
+
+**Sau khi update Frontend:**
+- ✅ Test UI changes
+- ✅ Verify login/register vẫn hoạt động
+- ❌ Voice chat vẫn hoạt động bình thường (không đổi)
+
+**Sau khi update Backend:**
+- ✅ Test auth API
+- ✅ Verify database operations
+- ❌ Voice chat vẫn hoạt động bình thường (không đổi)
+
+**Sau khi update Voice Server:**
+- ✅ Test Socket.io connection
+- ✅ Verify WebRTC calls
+- ❌ UI vẫn giữ nguyên (không đổi)
+
+#### 3. Rollback nếu có lỗi
+
+**Vercel (Frontend):**
+```bash
+# Vercel Dashboard → Deployments → Click deployment trước → "Promote to Production"
+```
+
+**Railway (Voice Server):**
+```bash
+# Railway Dashboard → Deployments → Click deployment trước → "Redeploy"
+```
+
+**Render (Backend):**
+```bash
+# Render Dashboard → Manual Deploy → Select previous commit
+```
+
+### Tóm tắt
+
+| Thay đổi | Frontend | Voice Server | Backend |
+|----------|----------|--------------|---------|
+| **UI/CSS** | 🔄 Deploy | ⏸️ Không | ⏸️ Không |
+| **Auth logic** | ⏸️ Không | ⏸️ Không | 🔄 Deploy |
+| **Socket.io** | ⏸️ Không | 🔄 Deploy | ⏸️ Không |
+| **WebRTC config** | ⏸️ Không | 🔄 Deploy | ⏸️ Không |
+| **Database** | ⏸️ Không | ⏸️ Không | 🔄 Deploy |
+
+> **💡 Lợi ích của Microservices:** Mỗi service độc lập → Update một service không ảnh hưởng đến các service khác!
+
+## �🚀 Cài đặt Local Development
 
 ### 1. Clone repository
 
