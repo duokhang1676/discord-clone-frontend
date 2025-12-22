@@ -1,7 +1,20 @@
 {
   "version": 2,
-  "public": true,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/public/login.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/public/register.html"
+    },
     {
       "source": "/(.*)",
       "destination": "/public/$1"
