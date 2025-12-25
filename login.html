@@ -109,6 +109,11 @@
           // Store username in localStorage
           localStorage.setItem('username', data.username);
           
+          // SAFARI iOS FIX: Store session token if provided
+          if (data.session_token) {
+            localStorage.setItem('session_token', data.session_token);
+          }
+          
           // Redirect to main page
           window.location.href = 'index.html';
         } else {

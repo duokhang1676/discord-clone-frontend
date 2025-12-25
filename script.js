@@ -108,6 +108,9 @@ socket.on('user-info', async (user) => {
   
   // Initialize local stream when connected
   await initializeLocalStream();
+  
+  // Load chat history
+  await loadMessageHistory();
 });
 
 socket.on('user-list', (users) => {
@@ -522,5 +525,156 @@ disconnectBtn.addEventListener('click', () => {
   endCall();
 });
 
-// Initialize
-console.log('Voice chat client initialized');
+// ==================== CHAT FUNCTIONALITY ====================
+
+// Chat elements
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const clearChatBtn = document.getElementById('clear-chat-btn');
+
+// Load message history from backend
+async function loadMessageHistory() {
+  try {
+    const headers = {};
+    const sessionToken = localStorage.getItem('session_token');
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
+    
+    const response = await fetch('https://discord-clone-mp22.onrender.com/api/messages', {
+      credentials: 'include',
+      headers: headers
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      chatMessages.innerHTML = '';
+      if (data.messages && data.messages.length > 0) {
+        data.messages.forEach(msg => {
+          displayMessage(msg.username, msg.message, msg.timestamp, msg.user_id === currentUserId);
+        });
+      } else {
+        chatMessages.innerHTML = '<div class="loading-messages">No messages yet. Start the conversation!</div>';
+      }
+      scrollToBottom();
+    }
+  } catch (error) {
+    console.error('Failed to load messages:', error);
+    chatMessages.innerHTML = '<div class="error-message">Failed to load messages. Check your connection.</div>';
+  }
+}
+
+// Send message
+function sendMessage() {
+  const message = chatInput.value.trim();
+  if (!message) return;
+  
+  // Disable send button temporarily
+  sendBtn.disabled = true;
+  
+  socket.emit('chat-message', {
+    message: message,
+    username: yourName.textContent,
+    timestamp: new Date().toISOString()
+  });
+  
+  chatInput.value = '';
+  
+  // Re-enable after short delay
+  setTimeout(() => {
+    sendBtn.disabled = false;
+    chatInput.focus();
+  }, 500);
+}
+
+// Receive message from socket
+socket.on('chat-message', (data) => {
+  console.log('💬 Received message:', data);
+  displayMessage(
+    data.username, 
+    data.message, 
+    data.timestamp,
+    data.user_id === currentUserId
+  );
+  scrollToBottom();
+});
+
+// Display message in UI
+function displayMessage(username, message, timestamp, isSelf) {
+  // Remove loading message if exists
+  const loadingMsg = chatMessages.querySelector('.loading-messages');
+  if (loadingMsg) {
+    loadingMsg.remove();
+  }
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${isSelf ? 'self' : ''}`;
+  
+  const time = new Date(timestamp).toLocaleTimeString('vi-VN', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  messageDiv.innerHTML = `
+    <span class="username">${escapeHtml(username)}</span>
+    <span class="text">${escapeHtml(message)}</span>
+    <span class="timestamp">${time}</span>
+  `;
+  
+  chatMessages.appendChild(messageDiv);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Scroll to bottom of chat
+function scrollToBottom() {
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Clear chat history
+async function clearChatHistory() {
+  if (!confirm('Are you sure you want to clear all messages?')) {
+    return;
+  }
+  
+  try {
+    const headers = {};
+    const sessionToken = localStorage.getItem('session_token');
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
+    
+    const response = await fetch('https://discord-clone-mp22.onrender.com/api/messages/clear', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: headers
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      chatMessages.innerHTML = '<div class="loading-messages">Chat cleared. Start a new conversation!</div>';
+      console.log(`✅ Cleared ${data.deleted_count} messages`);
+    }
+  } catch (error) {
+    console.error('Failed to clear messages:', error);
+    alert('Failed to clear messages. Please try again.');
+  }
+}
+
+// Event listeners for chat
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+clearChatBtn.addEventListener('click', clearChatHistory);
+

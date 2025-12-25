@@ -113,6 +113,39 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Handle chat messages
+  socket.on('chat-message', async (data) => {
+    console.log('💬 Chat message from', data.username, ':', data.message);
+    
+    // Broadcast to all users
+    io.emit('chat-message', {
+      user_id: socket.id,
+      username: data.username,
+      message: data.message,
+      timestamp: data.timestamp
+    });
+    
+    // Save to database via backend API
+    try {
+      const axios = require('axios');
+      const BACKEND_URL = 'https://discord-clone-mp22.onrender.com';
+      
+      await axios.post(`${BACKEND_URL}/api/messages`, {
+        user_id: socket.id,
+        username: data.username,
+        message: data.message,
+        timestamp: data.timestamp
+      }, {
+        timeout: 5000 // 5 second timeout
+      });
+      
+      console.log('✅ Message saved to database');
+    } catch (error) {
+      console.error('❌ Failed to save message:', error.message);
+      // Don't fail the broadcast even if DB save fails
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     delete users[socket.id];

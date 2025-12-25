@@ -89,6 +89,32 @@
           </div>
         </div>
       </div>
+
+      <div class="chat-panel">
+        <div class="chat-header">
+          <h3>💬 Room Chat</h3>
+          <button id="clear-chat-btn" class="clear-chat-btn" title="Clear chat history">
+            🗑️
+          </button>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+          <div class="loading-messages">Loading messages...</div>
+        </div>
+        
+        <div class="chat-input-container">
+          <input 
+            type="text" 
+            id="chat-input" 
+            placeholder="Type a message..."
+            maxlength="500"
+            autocomplete="off"
+          >
+          <button id="send-btn" class="send-btn" title="Send message">
+            <span>📤</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -98,8 +124,16 @@
     // Check authentication before loading
     async function checkAuth() {
       try {
+        // SAFARI iOS FIX: Send session token in header
+        const headers = {};
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+        }
+        
         const response = await fetch('https://discord-clone-mp22.onrender.com/api/check-auth', {
-          credentials: 'include'
+          credentials: 'include',
+          headers: headers
         });
         const data = await response.json();
         
@@ -125,11 +159,19 @@
     // Logout function
     async function logout() {
       try {
+        const headers = {};
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+        }
+        
         await fetch('https://discord-clone-mp22.onrender.com/api/logout', {
           method: 'POST',
-          credentials: 'include'
+          credentials: 'include',
+          headers: headers
         });
         localStorage.removeItem('username');
+        localStorage.removeItem('session_token');
         window.location.href = 'login.html';
       } catch (error) {
         console.error('Logout error:', error);
