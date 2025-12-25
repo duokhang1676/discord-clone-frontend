@@ -106,11 +106,16 @@ socket.on('user-info', async (user) => {
   yourName.textContent = user.name;
   console.log('Connected as:', user.name);
   
+  // Initialize chat elements after DOM is ready
+  if (initializeChatElements()) {
+    // Load chat history
+    await loadMessageHistory();
+  } else {
+    console.error('⚠️ Chat initialization failed - chat features may not work');
+  }
+  
   // Initialize local stream when connected
   await initializeLocalStream();
-  
-  // Load chat history
-  await loadMessageHistory();
 });
 
 socket.on('user-list', (users) => {
@@ -527,14 +532,54 @@ disconnectBtn.addEventListener('click', () => {
 
 // ==================== CHAT FUNCTIONALITY ====================
 
-// Chat elements
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
-const sendBtn = document.getElementById('send-btn');
-const clearChatBtn = document.getElementById('clear-chat-btn');
+// Chat elements (initialized after DOM ready)
+let chatMessages;
+let chatInput;
+let sendBtn;
+let clearChatBtn;
+
+// Initialize chat elements
+function initializeChatElements() {
+  chatMessages = document.getElementById('chat-messages');
+  chatInput = document.getElementById('chat-input');
+  sendBtn = document.getElementById('send-btn');
+  clearChatBtn = document.getElementById('clear-chat-btn');
+  
+  if (!chatMessages || !chatInput || !sendBtn) {
+    console.error('❌ Chat elements not found in DOM!');
+    console.log('chatMessages:', chatMessages);
+    console.log('chatInput:', chatInput);
+    console.log('sendBtn:', sendBtn);
+    return false;
+  }
+  
+  console.log('✅ Chat elements initialized successfully');
+  
+  // Add event listeners
+  sendBtn.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener('click', clearChatHistory);
+  }
+  
+  return true;
+}
 
 // Load message history from backend
 async function loadMessageHistory() {
+  if (!chatMessages) {
+    console.error('❌ Cannot load messages: chatMessages element is null');
+    return;
+  }
+  
+  console.log('📥 Loading message history...');
+  
   try {
     const headers = {};
     const sessionToken = localStorage.getItem('session_token');
@@ -668,13 +713,6 @@ async function clearChatHistory() {
   }
 }
 
-// Event listeners for chat
-sendBtn.addEventListener('click', sendMessage);
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
-clearChatBtn.addEventListener('click', clearChatHistory);
+// Note: Event listeners are now attached in initializeChatElements() function
+console.log('✅ Voice chat client loaded - waiting for user-info event to initialize chat');
 

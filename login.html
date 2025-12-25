@@ -105,6 +105,10 @@
         
         const data = await response.json();
         
+        // Debug logging
+        console.log('Login response status:', response.status);
+        console.log('Login response data:', data);
+        
         if (data.success) {
           // Store username in localStorage
           localStorage.setItem('username', data.username);
@@ -118,7 +122,7 @@
           window.location.href = 'index.html';
         } else {
           // Show error
-          errorMessage.textContent = data.message;
+          errorMessage.textContent = data.message || 'Username hoặc password không đúng';
           errorMessage.style.display = 'block';
         }
       } catch (error) {

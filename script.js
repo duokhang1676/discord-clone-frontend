@@ -106,6 +106,9 @@ socket.on('user-info', async (user) => {
   yourName.textContent = user.name;
   console.log('Connected as:', user.name);
   
+  // Initialize chat elements after DOM is ready
+  initializeChatElements();
+  
   // Initialize local stream when connected
   await initializeLocalStream();
   
@@ -527,14 +530,51 @@ disconnectBtn.addEventListener('click', () => {
 
 // ==================== CHAT FUNCTIONALITY ====================
 
-// Chat elements
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
-const sendBtn = document.getElementById('send-btn');
-const clearChatBtn = document.getElementById('clear-chat-btn');
+// Chat elements - initialized after DOM ready
+let chatMessages, chatInput, sendBtn, clearChatBtn;
+
+// Initialize chat elements
+function initializeChatElements() {
+  chatMessages = document.getElementById('chat-messages');
+  chatInput = document.getElementById('chat-input');
+  sendBtn = document.getElementById('send-btn');
+  clearChatBtn = document.getElementById('clear-chat-btn');
+  
+  if (!chatMessages || !chatInput || !sendBtn) {
+    console.error('❌ Chat elements not found in DOM!');
+    console.log('chatMessages:', chatMessages);
+    console.log('chatInput:', chatInput);
+    console.log('sendBtn:', sendBtn);
+    return false;
+  }
+  
+  console.log('✅ Chat elements initialized successfully');
+  
+  // Add event listeners
+  sendBtn.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener('click', clearChatHistory);
+  }
+  
+  return true;
+}
 
 // Load message history from backend
 async function loadMessageHistory() {
+  if (!chatMessages) {
+    console.error('❌ Cannot load messages: chatMessages element is null');
+    return;
+  }
+  
+  console.log('📥 Loading message history...');
+  
   try {
     const headers = {};
     const sessionToken = localStorage.getItem('session_token');
@@ -551,13 +591,18 @@ async function loadMessageHistory() {
     if (data.success) {
       chatMessages.innerHTML = '';
       if (data.messages && data.messages.length > 0) {
+        console.log(`✅ Loaded ${data.messages.length} messages from backend`);
         data.messages.forEach(msg => {
           displayMessage(msg.username, msg.message, msg.timestamp, msg.user_id === currentUserId);
         });
       } else {
+        console.log('💬 No messages in history - starting fresh');
         chatMessages.innerHTML = '<div class="loading-messages">No messages yet. Start the conversation!</div>';
       }
       scrollToBottom();
+    } else {
+      console.error('❌ Backend returned error:', data.message);
+      chatMessages.innerHTML = '<div class="error-message">Failed to load messages: ' + (data.message || 'Unknown error') + '</div>';
     }
   } catch (error) {
     console.error('Failed to load messages:', error);
@@ -567,8 +612,18 @@ async function loadMessageHistory() {
 
 // Send message
 function sendMessage() {
+  if (!chatInput || !sendBtn) {
+    console.error('❌ Chat elements not initialized');
+    return;
+  }
+  
   const message = chatInput.value.trim();
-  if (!message) return;
+  if (!message) {
+    console.log('⚠️ Empty message - not sending');
+    return;
+  }
+  
+  console.log('📤 Sending message:', message);
   
   // Disable send button temporarily
   sendBtn.disabled = true;
@@ -668,13 +723,5 @@ async function clearChatHistory() {
   }
 }
 
-// Event listeners for chat
-sendBtn.addEventListener('click', sendMessage);
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
-clearChatBtn.addEventListener('click', clearChatHistory);
-
+// Note: Event listeners are now attached in initializeChatElements() function
+console.log('✅ Voice chat client loaded - waiting for user-info event to initialize chat');
