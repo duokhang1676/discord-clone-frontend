@@ -481,6 +481,17 @@ body {
   }
 }
 
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
 .message.self {
   background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
   margin-left: auto;

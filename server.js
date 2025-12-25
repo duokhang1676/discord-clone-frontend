@@ -89,6 +89,11 @@ io.on('connection', (socket) => {
   console.log('📤 Broadcasting user list to all clients. Total users:', Object.keys(users).length);
   io.emit('user-list', Object.values(users));
 
+  // Handle request for updated user list
+  socket.on('get-user-list', () => {
+    socket.emit('user-list', Object.values(users));
+  });
+
   // Handle WebRTC signaling
   socket.on('offer', (data) => {
     console.log('Offer from', socket.id, 'to', data.to);

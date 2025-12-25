@@ -130,7 +130,32 @@ socket.on('user-disconnected', (userId) => {
   if (connectedToUserId === userId) {
     console.log('⚠️ Cleaning up connection to disconnected user');
     endCall();
+    
+    // Show notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ed4245;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = '🚪 User disconnected from call';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
   }
+  
+  // Request updated user list
+  socket.emit('get-user-list');
 });
 
 socket.on('offer', async (data) => {
