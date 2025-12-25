@@ -38,7 +38,13 @@ const io = require('socket.io')(server, {
     credentials: true
   },
   allowEIO3: true,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  // Prevent premature disconnection
+  pingTimeout: 60000,    // 60 seconds (default: 20s)
+  pingInterval: 25000,   // 25 seconds (default: 25s)
+  upgradeTimeout: 30000, // 30 seconds (default: 10s)
+  // Allow longer time for connection to establish
+  connectTimeout: 45000  // 45 seconds
 });
 
 // Debug middleware

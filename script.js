@@ -24,16 +24,59 @@ socket.on('connect_error', (error) => {
 });
 
 socket.on('disconnect', (reason) => {
-  console.log('Socket disconnected:', reason);
-  yourName.textContent = 'Disconnected';
+  console.log('❌ Socket disconnected:', reason);
+  yourName.textContent = 'Disconnected - Reconnecting...';
+  
+  // End call if disconnected
+  if (peerConnection) {
+    endCall();
+  }
+});
+
+socket.on('reconnect', (attemptNumber) => {
+  console.log('✅ Socket reconnected after', attemptNumber, 'attempts');
+  yourName.textContent = storedUsername || 'Guest';
+  
+  // Request updated user list
+  socket.emit('user-list');
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+  console.log('🔄 Reconnection attempt', attemptNumber);
+});
+
+socket.on('reconnect_error', (error) => {
+  console.error('❌ Reconnection error:', error);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('❌ Reconnection failed completely');
+  yourName.textContent = 'Connection Failed - Please Refresh';
 });
 
 // WebRTC configuration
 const configuration = {
   iceServers: [
+    // Google STUN servers
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ]
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    // Public TURN servers (fallback for restricted networks)
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ],
+  // Improve ICE gathering
+  iceCandidatePoolSize: 10,
+  // Use unified plan (modern standard)
+  sdpSemantics: 'unified-plan'
 };
 
 // Global variables
@@ -321,16 +364,69 @@ async function createPeerConnection(userId) {
     }
   };
 
-  // Handle connection state changes
-  peerConnection.onconnectionstatechange = () => {
-    console.log('Connection state:', peerConnection.connectionState);
+  // Handle ICE connection state changes (more reliable than connectionState)
+  peerConnection.oniceconnectionstatechange = () => {
+    console.log('🧊 ICE Connection State:', peerConnection.iceConnectionState);
     
-    if (peerConnection.connectionState === 'disconnected' || 
-        peerConnection.connectionState === 'failed' ||
-        peerConnection.connectionState === 'closed') {
+    const state = peerConnection.iceConnectionState;
+    
+    if (state === 'failed') {
+      console.error('❌ ICE connection failed - attempting to reconnect...');
+      // Try to restart ICE
+      attemptReconnect();
+    } else if (state === 'disconnected') {
+      console.warn('⚠️ ICE disconnected - waiting for recovery...');
+      // Wait a bit before ending call (might recover)
+      setTimeout(() => {
+        if (peerConnection && peerConnection.iceConnectionState === 'disconnected') {
+          console.error('❌ ICE still disconnected after 10s - ending call');
+          endCall();
+        }
+      }, 10000); // Wait 10 seconds for recovery
+    } else if (state === 'connected' || state === 'completed') {
+      console.log('✅ ICE connection established!');
+    } else if (state === 'closed') {
       endCall();
     }
   };
+
+  // Handle connection state changes
+  peerConnection.onconnectionstatechange = () => {
+    console.log('📡 Connection state:', peerConnection.connectionState);
+    
+    if (peerConnection.connectionState === 'failed') {
+      console.error('❌ Connection failed');
+      attemptReconnect();
+    } else if (peerConnection.connectionState === 'closed') {
+      endCall();
+    }
+  };
+}
+
+// Attempt to reconnect when ICE fails
+async function attemptReconnect() {
+  if (!connectedToUserId || !peerConnection) {
+    console.log('No active call to reconnect');
+    return;
+  }
+  
+  console.log('🔄 Attempting to restart ICE...');
+  
+  try {
+    // Create a new offer with iceRestart
+    const offer = await peerConnection.createOffer({ iceRestart: true });
+    await peerConnection.setLocalDescription(offer);
+    
+    socket.emit('offer', {
+      offer: offer,
+      to: connectedToUserId
+    });
+    
+    console.log('✅ ICE restart offer sent');
+  } catch (error) {
+    console.error('❌ Failed to restart ICE:', error);
+    endCall();
+  }
 }
 
 function endCall() {
