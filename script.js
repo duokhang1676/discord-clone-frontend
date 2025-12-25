@@ -539,6 +539,8 @@ function initializeChatElements() {
   chatInput = document.getElementById('chat-input');
   sendBtn = document.getElementById('send-btn');
   clearChatBtn = document.getElementById('clear-chat-btn');
+  const imageInput = document.getElementById('image-input');
+  const imageBtn = document.getElementById('image-btn');
   
   if (!chatMessages || !chatInput || !sendBtn) {
     console.error('❌ Chat elements not found in DOM!');
@@ -561,6 +563,15 @@ function initializeChatElements() {
   
   if (clearChatBtn) {
     clearChatBtn.addEventListener('click', clearChatHistory);
+  }
+  
+  // Image upload event listeners
+  if (imageBtn && imageInput) {
+    imageBtn.addEventListener('click', () => {
+      imageInput.click();
+    });
+    
+    imageInput.addEventListener('change', handleImageUpload);
   }
   
   return true;
@@ -643,6 +654,74 @@ function sendMessage() {
   }, 500);
 }
 
+// Handle image upload to Cloudinary
+async function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    alert('⚠️ Please select an image file');
+    return;
+  }
+  
+  // Validate file size (5MB limit)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    alert('⚠️ Image too large! Maximum size is 5MB');
+    return;
+  }
+  
+  console.log('📤 Uploading image to Cloudinary...');
+  
+  // Show uploading indicator
+  const imageBtn = document.getElementById('image-btn');
+  const originalContent = imageBtn.innerHTML;
+  imageBtn.innerHTML = '<span>⏳</span>';
+  imageBtn.disabled = true;
+  
+  try {
+    // Upload to Cloudinary
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'parking-data');
+    
+    const response = await fetch('https://api.cloudinary.com/v1_1/dcs6zqppp/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+    
+    const data = await response.json();
+    const imageUrl = data.secure_url;
+    
+    console.log('✅ Image uploaded:', imageUrl);
+    
+    // Send image message via socket
+    socket.emit('chat-message', {
+      type: 'image',
+      imageUrl: imageUrl,
+      message: '[Image]',
+      username: yourName.textContent,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Clear file input
+    event.target.value = '';
+    
+  } catch (error) {
+    console.error('❌ Image upload failed:', error);
+    alert('Failed to upload image. Please try again.');
+  } finally {
+    // Restore button
+    imageBtn.innerHTML = originalContent;
+    imageBtn.disabled = false;
+  }
+}
+
 // Receive message from socket
 socket.on('chat-message', (data) => {
   console.log('💬 Received message:', data);
@@ -650,13 +729,15 @@ socket.on('chat-message', (data) => {
     data.username, 
     data.message, 
     data.timestamp,
-    data.user_id === currentUserId
+    data.user_id === currentUserId,
+    data.type || 'text',
+    data.imageUrl
   );
   scrollToBottom();
 });
 
 // Display message in UI
-function displayMessage(username, message, timestamp, isSelf) {
+function displayMessage(username, message, timestamp, isSelf, type = 'text', imageUrl = null) {
   // Remove loading message if exists
   const loadingMsg = chatMessages.querySelector('.loading-messages');
   if (loadingMsg) {
@@ -671,11 +752,25 @@ function displayMessage(username, message, timestamp, isSelf) {
     minute: '2-digit' 
   });
   
-  messageDiv.innerHTML = `
-    <span class="username">${escapeHtml(username)}</span>
-    <span class="text">${escapeHtml(message)}</span>
-    <span class="timestamp">${time}</span>
-  `;
+  if (type === 'image' && imageUrl) {
+    messageDiv.innerHTML = `
+      <span class="username">${escapeHtml(username)}</span>
+      <div class="image-message">
+        <img src="${escapeHtml(imageUrl)}" 
+             alt="Shared image" 
+             loading="lazy"
+             onclick="window.open('${escapeHtml(imageUrl)}', '_blank')"
+             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3E❌ Image failed%3C/text%3E%3C/svg%3E'">
+      </div>
+      <span class="timestamp">${time}</span>
+    `;
+  } else {
+    messageDiv.innerHTML = `
+      <span class="username">${escapeHtml(username)}</span>
+      <span class="text">${escapeHtml(message)}</span>
+      <span class="timestamp">${time}</span>
+    `;
+  }
   
   chatMessages.appendChild(messageDiv);
 }

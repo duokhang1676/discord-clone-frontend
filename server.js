@@ -115,13 +115,17 @@ io.on('connection', (socket) => {
 
   // Handle chat messages
   socket.on('chat-message', async (data) => {
-    console.log('💬 Chat message from', data.username, ':', data.message);
+    const messageType = data.type || 'text';
+    const logMessage = messageType === 'image' ? '[Image]' : data.message;
+    console.log('💬 Chat message from', data.username, ':', logMessage);
     
     // Broadcast to all users
     io.emit('chat-message', {
       user_id: socket.id,
       username: data.username,
       message: data.message,
+      type: data.type || 'text',
+      imageUrl: data.imageUrl || null,
       timestamp: data.timestamp
     });
     
@@ -134,6 +138,8 @@ io.on('connection', (socket) => {
         user_id: socket.id,
         username: data.username,
         message: data.message,
+        type: data.type || 'text',
+        imageUrl: data.imageUrl || null,
         timestamp: data.timestamp
       }, {
         timeout: 5000 // 5 second timeout
