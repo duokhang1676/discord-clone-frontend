@@ -154,6 +154,10 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    
+    // Notify all other users that this user disconnected
+    socket.broadcast.emit('user-disconnected', socket.id);
+    
     delete users[socket.id];
     io.emit('user-list', Object.values(users));
   });

@@ -120,12 +120,29 @@ socket.on('user-list', (users) => {
   updateUserList(users);
 });
 
+// Handle when another user disconnects
+socket.on('user-disconnected', (userId) => {
+  console.log('🚪 User disconnected:', userId);
+  
+  // If we were connected to this user, cleanup the peer connection
+  if (connectedToUserId === userId) {
+    console.log('⚠️ Cleaning up connection to disconnected user');
+    endCall();
+  }
+});
+
 socket.on('offer', async (data) => {
   console.log('Received offer from:', data.from);
   
+  // Cleanup existing connection before accepting new offer
   if (peerConnection) {
-    console.log('Already in a call');
-    return;
+    console.log('⚠️ Cleaning up existing connection before accepting new offer');
+    peerConnection.ontrack = null;
+    peerConnection.onicecandidate = null;
+    peerConnection.oniceconnectionstatechange = null;
+    peerConnection.onconnectionstatechange = null;
+    peerConnection.close();
+    peerConnection = null;
   }
   
   if (!localStream) {
@@ -439,8 +456,15 @@ function endCall() {
   console.log('Ending call');
   
   if (peerConnection) {
+    // Close peer connection properly
+    peerConnection.ontrack = null;
+    peerConnection.onicecandidate = null;
+    peerConnection.oniceconnectionstatechange = null;
+    peerConnection.onconnectionstatechange = null;
+    
     peerConnection.close();
     peerConnection = null;
+    console.log('✅ Peer connection closed and cleaned up');
   }
   
   connectedToUserId = null;
