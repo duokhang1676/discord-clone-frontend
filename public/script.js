@@ -609,7 +609,14 @@ async function loadMessageHistory() {
       chatMessages.innerHTML = '';
       if (data.messages && data.messages.length > 0) {
         data.messages.forEach(msg => {
-          displayMessage(msg.username, msg.message, msg.timestamp, msg.user_id === currentUserId);
+          displayMessage(
+            msg.username, 
+            msg.message, 
+            msg.timestamp, 
+            msg.user_id === currentUserId,
+            msg.type || 'text',
+            msg.imageUrl || null
+          );
         });
       } else {
         chatMessages.innerHTML = '<div class="loading-messages">No messages yet. Start the conversation!</div>';

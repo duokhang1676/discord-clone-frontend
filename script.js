@@ -604,7 +604,14 @@ async function loadMessageHistory() {
       if (data.messages && data.messages.length > 0) {
         console.log(`✅ Loaded ${data.messages.length} messages from backend`);
         data.messages.forEach(msg => {
-          displayMessage(msg.username, msg.message, msg.timestamp, msg.user_id === currentUserId);
+          displayMessage(
+            msg.username, 
+            msg.message, 
+            msg.timestamp, 
+            msg.user_id === currentUserId,
+            msg.type || 'text',
+            msg.imageUrl || null
+          );
         });
       } else {
         console.log('💬 No messages in history - starting fresh');
