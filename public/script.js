@@ -657,12 +657,13 @@ async function loadMessageHistory() {
     if (data.success) {
       chatMessages.innerHTML = '';
       if (data.messages && data.messages.length > 0) {
+        const currentUsername = yourName.textContent;
         data.messages.forEach(msg => {
           displayMessage(
             msg.username, 
             msg.message, 
             msg.timestamp, 
-            msg.user_id === currentUserId,
+            msg.username === currentUsername,
             msg.type || 'text',
             msg.imageUrl || null
           );

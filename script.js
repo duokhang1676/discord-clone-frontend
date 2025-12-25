@@ -652,12 +652,13 @@ async function loadMessageHistory() {
       chatMessages.innerHTML = '';
       if (data.messages && data.messages.length > 0) {
         console.log(`✅ Loaded ${data.messages.length} messages from backend`);
+        const currentUsername = yourName.textContent;
         data.messages.forEach(msg => {
           displayMessage(
             msg.username, 
             msg.message, 
             msg.timestamp, 
-            msg.user_id === currentUserId,
+            msg.username === currentUsername,
             msg.type || 'text',
             msg.imageUrl || null
           );
