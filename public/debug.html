@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - iPhone Safari</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      color: #5865f2;
+    }
+    
+    .section {
+      background: #2a2a2a;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #5865f2;
+    }
+    
+    .section h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #43b581;
+    }
+    
+    .info {
+      padding: 10px;
+      background: #1e1e1e;
+      border-radius: 4px;
+      margin: 5px 0;
+      word-break: break-all;
+    }
+    
+    .success {
+      color: #43b581;
+    }
+    
+    .error {
+      color: #f04747;
+    }
+    
+    .warning {
+      color: #faa61a;
+    }
+    
+    button {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px 5px 5px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    button:active {
+      background: #4752c4;
+    }
+    
+    .log {
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #5865f2;
+      padding-left: 10px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 10px;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 iPhone Safari Debug Tool</h1>
+  
+  <div class="section">
+    <h2>📱 Device Info</h2>
+    <div id="device-info" class="info"></div>
+  </div>
+  
+  <div class="section">
+    <h2>💾 localStorage Test</h2>
+    <div id="storage-info" class="info"></div>
+    <button onclick="testLocalStorage()">Test localStorage</button>
+    <button onclick="clearStorage()">Clear Storage</button>
+  </div>
+  
+  <div class="section">
+    <h2>🔐 Current Auth Data</h2>
+    <div id="auth-data" class="info"></div>
+    <button onclick="checkAuthData()">Refresh Auth Data</button>
+  </div>
+  
+  <div class="section">
+    <h2>🧪 Test Login</h2>
+    <input type="text" id="test-username" placeholder="Username">
+    <input type="password" id="test-password" placeholder="Password">
+    <button onclick="testLogin()">Test Login API</button>
+  </div>
+  
+  <div class="section">
+    <h2>✅ Test Check Auth</h2>
+    <div id="check-auth-result" class="info"></div>
+    <button onclick="testCheckAuth()">Test Check-Auth API</button>
+  </div>
+  
+  <div class="section">
+    <h2>📡 Backend Connection</h2>
+    <div id="backend-status" class="info"></div>
+    <button onclick="testBackend()">Test Backend</button>
+  </div>
+  
+  <div class="section">
+    <h2>📝 Debug Logs</h2>
+    <div id="debug-logs" class="log"></div>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+
+  <script>
+    const API_BASE = 'https://discord-clone-mp22.onrender.com';
+    let logs = [];
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = `[${timestamp}] ${message}`;
+      logs.push({ entry, type });
+      
+      const logsDiv = document.getElementById('debug-logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${type}`;
+      logEntry.textContent = entry;
+      logsDiv.appendChild(logEntry);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      
+      console.log(entry);
+    }
+
+    function clearLogs() {
+      logs = [];
+      document.getElementById('debug-logs').innerHTML = '';
+      log('Logs cleared');
+    }
+
+    // Device Info
+    function showDeviceInfo() {
+      const info = {
+        'User Agent': navigator.userAgent,
+        'Platform': navigator.platform,
+        'Language': navigator.language,
+        'Online': navigator.onLine,
+        'Cookie Enabled': navigator.cookieEnabled,
+        'Screen': `${screen.width}x${screen.height}`,
+        'Viewport': `${window.innerWidth}x${window.innerHeight}`,
+        'iOS Safari': /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent),
+        'Private Mode': 'Testing...'
+      };
+      
+      let html = '';
+      for (let [key, value] of Object.entries(info)) {
+        html += `<div><strong>${key}:</strong> ${value}</div>`;
+      }
+      
+      document.getElementById('device-info').innerHTML = html;
+      log('Device info loaded');
+    }
+
+    // Test localStorage
+    function testLocalStorage() {
+      try {
+        const testKey = '__test__';
+        const testValue = 'test-' + Date.now();
+        
+        // Write test
+        localStorage.setItem(testKey, testValue);
+        log('✅ localStorage.setItem() works', 'success');
+        
+        // Read test
+        const retrieved = localStorage.getItem(testKey);
+        if (retrieved === testValue) {
+          log('✅ localStorage.getItem() works', 'success');
+        } else {
+          log('❌ localStorage.getItem() returns wrong value', 'error');
+        }
+        
+        // Delete test
+        localStorage.removeItem(testKey);
+        const afterDelete = localStorage.getItem(testKey);
+        if (afterDelete === null) {
+          log('✅ localStorage.removeItem() works', 'success');
+        }
+        
+        // Check quota
+        const used = JSON.stringify(localStorage).length;
+        log(`📊 localStorage usage: ${used} bytes`, 'info');
+        
+        document.getElementById('storage-info').innerHTML = `
+          <div class="success">✅ localStorage is working!</div>
+          <div>Used: ${used} bytes</div>
+        `;
+        
+      } catch (error) {
+        log('❌ localStorage ERROR: ' + error.message, 'error');
+        document.getElementById('storage-info').innerHTML = `
+          <div class="error">❌ localStorage FAILED!</div>
+          <div>Error: ${error.message}</div>
+          <div class="warning">⚠️ You may be in Private Browsing Mode</div>
+        `;
+      }
+    }
+
+    function clearStorage() {
+      try {
+        localStorage.clear();
+        log('✅ localStorage cleared', 'success');
+        checkAuthData();
+      } catch (error) {
+        log('❌ Clear storage error: ' + error.message, 'error');
+      }
+    }
+
+    // Check current auth data
+    function checkAuthData() {
+      try {
+        const username = localStorage.getItem('username');
+        const token = localStorage.getItem('session_token');
+        
+        let html = '';
+        if (username) {
+          html += `<div><strong>Username:</strong> <span class="success">${username}</span></div>`;
+        } else {
+          html += `<div><strong>Username:</strong> <span class="error">Not found</span></div>`;
+        }
+        
+        if (token) {
+          html += `<div><strong>Token:</strong> <span class="success">${token.substring(0, 20)}...</span></div>`;
+          html += `<div><strong>Token Length:</strong> ${token.length} chars</div>`;
+        } else {
+          html += `<div><strong>Token:</strong> <span class="error">Not found</span></div>`;
+        }
+        
+        document.getElementById('auth-data').innerHTML = html;
+        log(`Auth data: username=${!!username}, token=${!!token}`);
+        
+      } catch (error) {
+        log('❌ Check auth data error: ' + error.message, 'error');
+      }
+    }
+
+    // Test login
+    async function testLogin() {
+      const username = document.getElementById('test-username').value;
+      const password = document.getElementById('test-password').value;
+      
+      if (!username || !password) {
+        log('⚠️ Please enter username and password', 'warning');
+        return;
+      }
+      
+      log('🔄 Testing login API...');
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+        
+        log(`Response status: ${response.status}`);
+        
+        const data = await response.json();
+        log('Response data: ' + JSON.stringify(data, null, 2));
+        
+        if (data.success) {
+          log('✅ Login successful!', 'success');
+          
+          if (data.session_token) {
+            log('✅ session_token received!', 'success');
+            localStorage.setItem('username', data.username);
+            localStorage.setItem('session_token', data.session_token);
+            log('✅ Saved to localStorage', 'success');
+          } else {
+            log('⚠️ WARNING: No session_token in response!', 'warning');
+            log('⚠️ Backend may not be updated correctly', 'warning');
+          }
+          
+          checkAuthData();
+        } else {
+          log('❌ Login failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+        
+      } catch (error) {
+        log('❌ Login error: ' + error.message, 'error');
+        log('Stack: ' + error.stack, 'error');
+      }
+    }
+
+    // Test check-auth
+    async function testCheckAuth() {
+      log('🔄 Testing check-auth API...');
+      
+      try {
+        const headers = {};
+        const sessionToken = localStorage.getItem('session_token');
+        
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+          log('📤 Sending Authorization header');
+        } else {
+          log('⚠️ No token in localStorage', 'warning');
+        }
+        
+        const response = await fetch(`${API_BASE}/api/check-auth`, {
+          credentials: 'include',
+          headers: headers
+        });
+        
+        log(`Response status: ${response.status}`);
+        
+        const data = await response.json();
+        log('Response data: ' + JSON.stringify(data, null, 2));
+        
+        let html = '';
+        if (data.authenticated) {
+          html = `<div class="success">✅ Authenticated!</div>`;
+          html += `<div>Username: ${data.username}</div>`;
+          log('✅ Authentication successful!', 'success');
+        } else {
+          html = `<div class="error">❌ Not authenticated</div>`;
+          log('❌ Authentication failed', 'error');
+        }
+        
+        document.getElementById('check-auth-result').innerHTML = html;
+        
+      } catch (error) {
+        log('❌ Check-auth error: ' + error.message, 'error');
+        document.getElementById('check-auth-result').innerHTML = 
+          `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    // Test backend connection
+    async function testBackend() {
+      log('🔄 Testing backend connection...');
+      
+      try {
+        const startTime = Date.now();
+        const response = await fetch(`${API_BASE}/api/check-auth`, {
+          credentials: 'include'
+        });
+        const duration = Date.now() - startTime;
+        
+        log(`✅ Backend reachable in ${duration}ms`, 'success');
+        log(`Status: ${response.status}`);
+        
+        document.getElementById('backend-status').innerHTML = `
+          <div class="success">✅ Connected</div>
+          <div>Response time: ${duration}ms</div>
+          <div>Status: ${response.status}</div>
+        `;
+        
+      } catch (error) {
+        log('❌ Backend connection error: ' + error.message, 'error');
+        document.getElementById('backend-status').innerHTML = `
+          <div class="error">❌ Cannot connect to backend</div>
+          <div>Error: ${error.message}</div>
+        `;
+      }
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      log('🚀 Debug tool loaded');
+      showDeviceInfo();
+      checkAuthData();
+      testLocalStorage();
+    });
+
+    // Catch all errors
+    window.addEventListener('error', (e) => {
+      log('❌ Global error: ' + e.message, 'error');
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      log('❌ Unhandled promise rejection: ' + e.reason, 'error');
+    });
+  </script>
+</body>
+</html>
