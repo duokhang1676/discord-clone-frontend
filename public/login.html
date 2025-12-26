@@ -5,8 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng nhập - Dương Khang Room</title>
   <link rel="stylesheet" href="auth-style.css">
+  <style>
+    .debug-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.95);
+      color: #0f0;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+      border-top: 2px solid #0f0;
+      z-index: 9999;
+    }
+    .debug-panel .log-success { color: #0f0; }
+    .debug-panel .log-error { color: #f00; }
+    .debug-panel .log-warning { color: #ff0; }
+    .debug-panel .log-info { color: #0ff; }
+    .debug-toggle {
+      position: fixed;
+      bottom: 210px;
+      right: 10px;
+      background: #000;
+      color: #0f0;
+      border: 2px solid #0f0;
+      padding: 10px;
+      cursor: pointer;
+      z-index: 10000;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
+  <!-- Debug Panel -->
+  <button class="debug-toggle" onclick="toggleDebug()">🐛 DEBUG</button>
+  <div class="debug-panel" id="debug-panel"></div>
+  
   <div class="auth-container">
     <div class="auth-box">
       <div class="auth-header">
@@ -54,6 +92,63 @@
   </div>
 
   <script>
+    // Debug panel functions
+    let debugLogs = [];
+    let debugVisible = true;
+    
+    function debugLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = `[${timestamp}] ${message}`;
+      debugLogs.push({ message: logEntry, type });
+      
+      const panel = document.getElementById('debug-panel');
+      if (panel) {
+        const div = document.createElement('div');
+        div.className = `log-${type}`;
+        div.textContent = logEntry;
+        panel.appendChild(div);
+        panel.scrollTop = panel.scrollHeight;
+      }
+      
+      console.log(`[${type.toUpperCase()}]`, message);
+    }
+    
+    function toggleDebug() {
+      const panel = document.getElementById('debug-panel');
+      debugVisible = !debugVisible;
+      panel.style.display = debugVisible ? 'block' : 'none';
+    }
+    
+    // Show initial debug info
+    window.addEventListener('DOMContentLoaded', () => {
+      debugLog('🚀 Login page loaded', 'success');
+      debugLog('User Agent: ' + navigator.userAgent.substring(0, 50) + '...', 'info');
+      debugLog('Platform: ' + navigator.platform, 'info');
+      
+      // Test localStorage
+      try {
+        const testKey = '__test__';
+        localStorage.setItem(testKey, 'test');
+        const retrieved = localStorage.getItem(testKey);
+        localStorage.removeItem(testKey);
+        
+        if (retrieved === 'test') {
+          debugLog('✅ localStorage: WORKING', 'success');
+        } else {
+          debugLog('❌ localStorage: READ FAILED', 'error');
+        }
+      } catch (e) {
+        debugLog('❌ localStorage: ' + e.message, 'error');
+        debugLog('⚠️ Possible Private Browsing Mode', 'warning');
+      }
+      
+      // Check existing auth data
+      const existingUsername = localStorage.getItem('username');
+      const existingToken = localStorage.getItem('session_token');
+      debugLog(`Existing username: ${existingUsername || 'NONE'}`, existingUsername ? 'info' : 'warning');
+      debugLog(`Existing token: ${existingToken ? existingToken.substring(0, 20) + '...' : 'NONE'}`, existingToken ? 'info' : 'warning');
+    });
+    
     const loginForm = document.getElementById('login-form');
     const errorMessage = document.getElementById('error-message');
     const loginBtn = document.getElementById('login-btn');
@@ -65,30 +160,38 @@
 
     async function checkAuth() {
       try {
+        debugLog('🔍 Checking existing authentication...', 'info');
+        
         // SAFARI iOS FIX: Send session token in header
         const headers = {};
         const sessionToken = localStorage.getItem('session_token');
         if (sessionToken) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
-          console.log('[iOS Debug] checkAuth: Token found in localStorage');
+          debugLog('📤 Sending token in Authorization header', 'success');
         } else {
-          console.log('[iOS Debug] checkAuth: No token in localStorage');
+          debugLog('⚠️ No token found, trying cookie auth', 'warning');
         }
         
+        debugLog('📡 Calling /api/check-auth...', 'info');
         const response = await fetch('https://discord-clone-mp22.onrender.com/api/check-auth', {
           credentials: 'include',
           headers: headers
         });
-        const data = await response.json();
         
-        console.log('[iOS Debug] checkAuth response:', data);
+        debugLog(`📥 Response status: ${response.status}`, 'info');
+        const data = await response.json();
+        debugLog(`📥 Response: ${JSON.stringify(data)}`, 'info');
         
         if (data.authenticated) {
-          console.log('[iOS Debug] Already authenticated, redirecting to index.html');
-          window.location.href = 'index.html';
+          debugLog('✅ Already authenticated! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1000);
+        } else {
+          debugLog('ℹ️ Not authenticated, ready for login', 'info');
         }
       } catch (error) {
-        console.error('[iOS Debug] Auth check error:', error);
+        debugLog('❌ checkAuth error: ' + error.message, 'error');
       }
     }
 
@@ -97,6 +200,8 @@
       
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
+      
+      debugLog('🔐 Login attempt for: ' + username, 'info');
       
       // Clear previous error
       errorMessage.textContent = '';
@@ -108,6 +213,7 @@
       btnLoader.style.display = 'inline';
       
       try {
+        debugLog('📡 Calling /api/login...', 'info');
         const response = await fetch('https://discord-clone-mp22.onrender.com/api/login', {
           method: 'POST',
           headers: {
@@ -117,58 +223,62 @@
           body: JSON.stringify({ username, password })
         });
         
+        debugLog(`📥 Login response status: ${response.status}`, 'info');
         const data = await response.json();
-        
-        // Debug logging
-        console.log('[iOS Debug] Login response status:', response.status);
-        console.log('[iOS Debug] Login response data:', data);
+        debugLog(`📥 Login response: ${JSON.stringify(data)}`, 'info');
         
         if (data.success) {
+          debugLog('✅ Login SUCCESS!', 'success');
+          
           try {
             // Store username in localStorage
             localStorage.setItem('username', data.username);
-            console.log('[iOS Debug] Username saved to localStorage:', data.username);
+            debugLog('✅ Username saved: ' + data.username, 'success');
             
             // SAFARI iOS FIX: Store session token if provided
             if (data.session_token) {
+              debugLog('📝 Saving session_token...', 'info');
               localStorage.setItem('session_token', data.session_token);
-              console.log('[iOS Debug] Session token saved to localStorage');
+              debugLog('✅ Token saved: ' + data.session_token.substring(0, 20) + '...', 'success');
               
               // Verify token was saved (iOS Safari fix)
               const savedToken = localStorage.getItem('session_token');
               if (savedToken === data.session_token) {
-                console.log('[iOS Debug] Token verified in localStorage');
+                debugLog('✅ Token verified in localStorage!', 'success');
               } else {
-                console.error('[iOS Debug] Token verification failed!');
+                debugLog('❌ Token verification FAILED!', 'error');
               }
             } else {
-              console.warn('[iOS Debug] No session_token in response - backend may not be updated');
+              debugLog('⚠️ WARNING: No session_token in response!', 'warning');
+              debugLog('⚠️ Backend may not be updated correctly', 'warning');
             }
             
             // iOS Safari fix: Add small delay to ensure localStorage is written
-            console.log('[iOS Debug] Waiting for localStorage to persist...');
+            debugLog('⏳ Waiting for localStorage to persist...', 'info');
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Redirect to main page
-            console.log('[iOS Debug] Redirecting to index.html');
-            window.location.href = 'index.html';
+            debugLog('🔄 Redirecting to index.html...', 'success');
+            debugLog('⏱️ Redirect in 2 seconds (check logs above)', 'warning');
+            
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 2000);
+            
           } catch (storageError) {
-            console.error('[iOS Debug] localStorage error:', storageError);
+            debugLog('❌ localStorage error: ' + storageError.message, 'error');
             errorMessage.textContent = 'Lỗi lưu phiên đăng nhập. Vui lòng tắt chế độ riêng tư và thử lại.';
             errorMessage.style.display = 'block';
           }
         } else {
           // Show error
+          debugLog('❌ Login failed: ' + (data.message || 'Unknown'), 'error');
           errorMessage.textContent = data.message || 'Username hoặc password không đúng';
           errorMessage.style.display = 'block';
         }
       } catch (error) {
-        console.error('[iOS Debug] Login error:', error);
-        console.error('[iOS Debug] Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
+        debugLog('❌ Login error: ' + error.message, 'error');
+        debugLog('Stack: ' + error.stack, 'error');
         errorMessage.textContent = 'Không thể kết nối đến server. Vui lòng thử lại sau.';
         errorMessage.style.display = 'block';
       } finally {
