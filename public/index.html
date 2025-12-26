@@ -112,20 +112,37 @@
         // SAFARI iOS FIX: Send session token in header
         const headers = {};
         const sessionToken = localStorage.getItem('session_token');
+        const username = localStorage.getItem('username');
+        
+        console.log('[iOS Debug] index.html checkAuth:', {
+          hasToken: !!sessionToken,
+          hasUsername: !!username,
+          username: username
+        });
+        
         if (sessionToken) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
+          console.log('[iOS Debug] Sending Authorization header with token');
+        } else {
+          console.log('[iOS Debug] No token found - will try cookie auth');
         }
         
         const response = await fetch('https://discord-clone-mp22.onrender.com/api/check-auth', {
           credentials: 'include',
           headers: headers
         });
+        
+        console.log('[iOS Debug] Auth response status:', response.status);
         const data = await response.json();
+        console.log('[iOS Debug] Auth response data:', data);
         
         if (!data.authenticated) {
+          console.log('[iOS Debug] Not authenticated, redirecting to login');
           window.location.href = 'login.html';
           return false;
         }
+        
+        console.log('[iOS Debug] Authentication successful');
         
         // Show logout button
         const logoutBtn = document.getElementById('logout-btn');
@@ -135,7 +152,12 @@
         
         return true;
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('[iOS Debug] Auth check error:', error);
+        console.error('[iOS Debug] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         window.location.href = 'login.html';
         return false;
       }
@@ -144,10 +166,13 @@
     // Logout function
     async function logout() {
       try {
+        console.log('[iOS Debug] Logout initiated');
+        
         const headers = {};
         const sessionToken = localStorage.getItem('session_token');
         if (sessionToken) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
+          console.log('[iOS Debug] Sending logout with token');
         }
         
         await fetch('https://discord-clone-mp22.onrender.com/api/logout', {
@@ -155,11 +180,23 @@
           credentials: 'include',
           headers: headers
         });
+        
+        console.log('[iOS Debug] Logout successful, clearing localStorage');
         localStorage.removeItem('username');
         localStorage.removeItem('session_token');
+        
+        console.log('[iOS Debug] Redirecting to login');
         window.location.href = 'login.html';
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error('[iOS Debug] Logout error:', error);
+        // Clear localStorage anyway
+        try {
+          localStorage.removeItem('username');
+          localStorage.removeItem('session_token');
+        } catch (e) {
+          console.error('[iOS Debug] localStorage clear error:', e);
+        }
+        window.location.href = 'login.html';
       }
     }
     
@@ -174,17 +211,36 @@
     // Check auth before proceeding
     checkAuth().then(authenticated => {
       if (authenticated) {
+        console.log('[iOS Debug] Loading Socket.io script...');
+        
         // Load Socket.io and main script
         const socketScript = document.createElement('script');
         socketScript.src = '/socket.io/socket.io.js';
         document.body.appendChild(socketScript);
         
         socketScript.onload = () => {
+          console.log('[iOS Debug] Socket.io loaded, loading main script...');
           const mainScript = document.createElement('script');
           mainScript.src = 'script.js';
           document.body.appendChild(mainScript);
+          
+          mainScript.onload = () => {
+            console.log('[iOS Debug] Main script loaded successfully');
+          };
+          
+          mainScript.onerror = (error) => {
+            console.error('[iOS Debug] Error loading main script:', error);
+          };
         };
+        
+        socketScript.onerror = (error) => {
+          console.error('[iOS Debug] Error loading Socket.io:', error);
+        };
+      } else {
+        console.log('[iOS Debug] Not authenticated, not loading scripts');
       }
+    }).catch(error => {
+      console.error('[iOS Debug] checkAuth promise error:', error);
     });
   </script>
 </body>

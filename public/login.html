@@ -65,16 +65,30 @@
 
     async function checkAuth() {
       try {
+        // SAFARI iOS FIX: Send session token in header
+        const headers = {};
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+          console.log('[iOS Debug] checkAuth: Token found in localStorage');
+        } else {
+          console.log('[iOS Debug] checkAuth: No token in localStorage');
+        }
+        
         const response = await fetch('https://discord-clone-mp22.onrender.com/api/check-auth', {
-          credentials: 'include'
+          credentials: 'include',
+          headers: headers
         });
         const data = await response.json();
         
+        console.log('[iOS Debug] checkAuth response:', data);
+        
         if (data.authenticated) {
+          console.log('[iOS Debug] Already authenticated, redirecting to index.html');
           window.location.href = 'index.html';
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('[iOS Debug] Auth check error:', error);
       }
     }
 
@@ -106,27 +120,55 @@
         const data = await response.json();
         
         // Debug logging
-        console.log('Login response status:', response.status);
-        console.log('Login response data:', data);
+        console.log('[iOS Debug] Login response status:', response.status);
+        console.log('[iOS Debug] Login response data:', data);
         
         if (data.success) {
-          // Store username in localStorage
-          localStorage.setItem('username', data.username);
-          
-          // SAFARI iOS FIX: Store session token if provided
-          if (data.session_token) {
-            localStorage.setItem('session_token', data.session_token);
+          try {
+            // Store username in localStorage
+            localStorage.setItem('username', data.username);
+            console.log('[iOS Debug] Username saved to localStorage:', data.username);
+            
+            // SAFARI iOS FIX: Store session token if provided
+            if (data.session_token) {
+              localStorage.setItem('session_token', data.session_token);
+              console.log('[iOS Debug] Session token saved to localStorage');
+              
+              // Verify token was saved (iOS Safari fix)
+              const savedToken = localStorage.getItem('session_token');
+              if (savedToken === data.session_token) {
+                console.log('[iOS Debug] Token verified in localStorage');
+              } else {
+                console.error('[iOS Debug] Token verification failed!');
+              }
+            } else {
+              console.warn('[iOS Debug] No session_token in response - backend may not be updated');
+            }
+            
+            // iOS Safari fix: Add small delay to ensure localStorage is written
+            console.log('[iOS Debug] Waiting for localStorage to persist...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Redirect to main page
+            console.log('[iOS Debug] Redirecting to index.html');
+            window.location.href = 'index.html';
+          } catch (storageError) {
+            console.error('[iOS Debug] localStorage error:', storageError);
+            errorMessage.textContent = 'Lỗi lưu phiên đăng nhập. Vui lòng tắt chế độ riêng tư và thử lại.';
+            errorMessage.style.display = 'block';
           }
-          
-          // Redirect to main page
-          window.location.href = 'index.html';
         } else {
           // Show error
           errorMessage.textContent = data.message || 'Username hoặc password không đúng';
           errorMessage.style.display = 'block';
         }
       } catch (error) {
-        console.error('Login error:', error);
+        console.error('[iOS Debug] Login error:', error);
+        console.error('[iOS Debug] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         errorMessage.textContent = 'Không thể kết nối đến server. Vui lòng thử lại sau.';
         errorMessage.style.display = 'block';
       } finally {
